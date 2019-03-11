@@ -148,13 +148,10 @@
     				<td>TestRoom</td>
     				<td align = "center"><input type = "submit" class ='btn btn-primary join' value="Join Room"/></td>
   				</tr>
-					<tr>
-						<td>TestRoom2</td>
-    				<td align = "center"><input type = "submit" class ='btn btn-primary join' value="Join Room"/></td>
-					</tr>
 				</table>
 
 				<div class = "roomLabel">
+						<label> Create a room below, then you can join it above once it has been created </label>
 						<input class = "form-control" placeholder="Name your room" id = "room"/>
 						<br/>
 						<input type = "submit" class ='btn btn-primary create' value="Create"/>
@@ -167,8 +164,8 @@
 			<div class = "col-md-4">
 				<div class = "well">
 					<h3> Welcome to A&D's Chat Server Application! </h3>
-						<div class = "well2">
-							<p> User messages will appear below: </p>
+						<div class = "well2" id = "well2">
+
 						</div>
 					<ul class = "list-group" id = "users"></ul>
 				</div>
@@ -222,6 +219,7 @@
 			var $username = $('#username');
 			var $roomArea = $('#roomArea');
 			var $room = $('#room');
+			var $well2 = $('#well2');
 
 
 			$(document).on('click', '.submit', function(e) {
@@ -242,9 +240,10 @@
 						console.log("create room");
 					socket.emit('create room', $room.val(), function(data){
 						if(data){
-							$roomArea.hide();
-							$messageArea.show();
-							//console.log("create room");
+							//$roomArea.hide();
+							//$messageArea.show();
+							$well2.append("You have joined room: " + '<strong>'+ $room.val() +'</strong>');
+							$table.append('<tr><td>' + $room.val() + '</td><td align = "center"><input type = "submit" ' + "class ='btn btn-primary join' " + 'value="Join Room"/></td></tr>');
 						};
 					});
 				});
