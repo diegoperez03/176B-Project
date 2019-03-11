@@ -1,0 +1,307 @@
+<html>
+<head>
+	<title>IO chat</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+	<script src ="/socket.io/socket.io.js"></script>
+	<script src="//www.WebRTC-Experiment.com/RecordRTC.js"></script>
+	<style type="text/css">
+		body{
+			margin-top:30px;
+		}
+
+		#roomArea{
+			display: none;
+		}
+
+		#messageArea{
+			display:none;
+		}
+
+		.well{
+			width: 900px;
+			margin: auto;
+			color: blue;
+		}
+
+		.well2{
+			color: black;
+		}
+
+		.msgLabel{
+			margin-top: 20px;
+		}
+
+		.chatRooms{
+			color: black;
+		}
+
+		.roomLabel{
+			margin-top: 100px;
+		}
+
+		th {
+  	border: 1px solid black;
+		}
+
+		.form-control2{
+			margin-bottom: 10px;
+		}
+
+
+	</style>
+
+	<script>
+		var a = 0;
+		function myFunction() {
+		  if(document.getElementById("demo").innerHTML == "Stop Recording"){
+		  	document.getElementById("demo").innerHTML = "Record";
+		  }else{
+		  	document.getElementById("demo").innerHTML = "Stop Recording";
+		  }
+		}
+	</script>
+	<script type="text/javascript">
+	const recordAudio = () =>
+	    new Promise(async resolve => {
+		    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		    const mediaRecorder = new MediaRecorder(stream);
+		    const audioChunks = [];
+
+		    mediaRecorder.addEventListener("dataavailable", event => {
+		      audioChunks.push(event.data);
+		    });
+
+		    const start = () => mediaRecorder.start();
+
+		    const stop = (socket) =>
+		      new Promise(resolve => {
+		        mediaRecorder.addEventListener("stop", () => {
+		          const audioBlob = new Blob(audioChunks);
+		          const audioUrl = URL.createObjectURL(audioBlob);
+		          const audio = new Audio(audioUrl);
+		          const play = () => audio.play();
+
+
+		          	socket.emit('send audio', {audio:true , buffer: audioChunks});
+					console.log("submit audio");
+
+
+		          resolve({ audioBlob, audioUrl, play });
+		        });
+
+		        mediaRecorder.stop();
+		      });
+
+	    resolve({ start, stop });
+	  });
+
+	const sleep = time => new Promise(resolve => setTimeout(resolve, time));
+
+	const handleAction = async (socket) => {
+		var sleepNum = 1000 * prompt("Enter how many seconds you'd like to record (Max is 60 and Min is 3");
+
+		console.log(sleep);
+	 	const recorder = await recordAudio();
+	    const actionButton = document.getElementById('action');
+		actionButton.disabled = true;
+		recorder.start();
+		await sleep(sleepNum);
+		const audio = await recorder.stop(socket);
+		await sleep(sleepNum);
+		actionButton.disabled = false;
+	}
+
+
+
+
+	</script>
+
+</head>
+<body>
+	<div class = "container">
+
+		<div id="userFormArea" class="row">
+			<div class="col-md-12">
+				<from id ="userForm">
+					<div class ="form-group">
+						<label> Enter Username </label>
+						<input class ="form-control" id = "username"/>
+						<br/>
+						<input type = "submit" class ='btn btn-primary login' value="Login"/>
+					</div>
+				</from>
+			</div>
+		</div>
+
+		<div id = "roomArea" class = "row">
+			<div class = "chatRooms">
+				<h3> Chat Rooms: Join one or create one! </h3>
+				<table style = "width:100%" id = "table">
+						<tr>
+    					<th align = "left">Open Rooms</th>
+    					<th align = "left">Join</th>
+  					</tr>
+  				<tr>
+    				<td>TestRoom</td>
+    				<td align = "center"><input type = "submit" class ='btn btn-primary join' value="Join Room"/></td>
+  				</tr>
+					<tr>
+						<td>TestRoom2</td>
+    				<td align = "center"><input type = "submit" class ='btn btn-primary join' value="Join Room"/></td>
+					</tr>
+				</table>
+
+				<div class = "roomLabel">
+						<input class = "form-control" placeholder="Name your room" id = "room"/>
+						<br/>
+						<input type = "submit" class ='btn btn-primary create' value="Create"/>
+
+				</div>
+			</div>
+		</div>
+
+		<div id = "messageArea" class = "row">
+			<div class = "col-md-4">
+				<div class = "well">
+					<h3> Welcome to A&D's Chat Server Application! </h3>
+						<div class = "well2">
+							<p> User messages will appear below: </p>
+						</div>
+					<ul class = "list-group" id = "users"></ul>
+				</div>
+			</div>
+			<div class ="col-md-8">
+				<div class  ="chat" id = "chat"></div>
+				<from id ="messageForm">
+					<div class ="form-group">
+						<div class = "msgLabel">
+							<label> Enter Message </label>
+						</div>
+						<textarea class ="form-control" id = "message"></textarea>
+						<br/>
+						<input type = "submit" class ='btn btn-primary submit' value="Send Message"/>
+						<input id = "action" type = "submit" class ='btn btn-primary record' value="Record"/>
+
+
+
+  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+    <a class="dropdown-item" href="#"></a>
+    <a class="dropdown-item" href="#">Another action</a>
+    <a class="dropdown-item" href="#">Something else here</a>
+  </div>
+
+					</div>
+				</from>
+			</div>
+		</div>
+	</div>
+
+
+
+	<script type="text/javascript">
+		var audio = [];
+
+		function playbut(dog) {
+					console.log(dog.placeholder);
+					var count = dog.placeholder;
+					audio[count].play();
+		}
+		$(function(){
+			var socket = io.connect();
+			var $messageForm = $('#messageForm');
+			var $message = $('#message');
+			var $chat = $('#chat');
+			var $table = $('#table');
+			var $userForm = $('#userForm');
+			var $userFormArea = $('#userFormArea');
+			var $messageArea = $('#messageArea');
+			var $users = $('#users');
+			var $username = $('#username');
+			var $roomArea = $('#roomArea');
+			var $room = $('#room');
+
+
+			$(document).on('click', '.submit', function(e) {
+			    e.preventDefault();
+				socket.emit('send message', $message.val());
+				$message.val('');
+				console.log("submit button");
+			});
+
+			$(document).on('click', '.record', function(e) {
+			    e.preventDefault();
+				handleAction(socket);
+				console.log("record");
+			});
+
+			$(document).on('click', '.create', function(e) {
+						e.preventDefault();
+						console.log("create room");
+					socket.emit('create room', $room.val(), function(data){
+						if(data){
+							$roomArea.hide();
+							$messageArea.show();
+							//console.log("create room");
+						};
+					});
+				});
+					//ADD IF STATEMENT, APPEND TO TABLE
+
+			socket.on('new message', function(d){
+				console.log("success");
+				$chat.append('<div class = "well2"><strong>'+d.user+'</strong>: ' + d.msg+ '</div>');
+			});
+
+			$(document).on('click', '.login', function(e) {
+			    e.preventDefault();
+				socket.emit('new user', $username.val(), function(data){
+					if(data){
+						$userFormArea.hide();
+						//$messageArea.show();
+						$roomArea.show();
+						$message.val('');
+						};
+					});
+			});
+
+
+
+
+			counter = 0;
+			socket.on('new audio', function(data){
+
+
+				const audioBlob2 = new Blob(data.buffer.buffer);
+		    	const audioUrl2 = URL.createObjectURL(audioBlob2);
+		        audio[counter] = new Audio();
+		     	audio[counter].src = audioUrl2;
+
+
+
+		        var dog = "dog";
+		        var s = '<div class = "well2"><strong>'+data.user+': </strong>';
+		        var r =$('<input/></div>').attr({
+			        type: "button",
+			 		onclick: "playbut(this)",
+			 		placeholder: counter,
+			        value: 'Play Message'
+			    });
+
+		        $chat.append(s);
+		        $chat.append(r);
+		        counter++;
+			});
+		});
+
+
+
+
+	</script>
+
+
+
+</body>
+</html>
