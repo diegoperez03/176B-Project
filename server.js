@@ -60,6 +60,12 @@ io.sockets.on('connection',function(socket){
 		updateRooms();
 	});
 
+	//join room
+	socket.on('join room', function(d,callback){
+		console.log("room joined");
+		callback(true);
+	});
+
 	function updateRooms(){
 		io.sockets.emit('get rooms', rooms);
 	};

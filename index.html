@@ -144,10 +144,8 @@
     					<th align = "left">Open Rooms</th>
     					<th align = "left">Join</th>
   					</tr>
-  				<tr>
-    				<td>TestRoom</td>
-    				<td align = "center"><input type = "submit" class ='btn btn-primary join' value="Join Room"/></td>
-  				</tr>
+						<tr class = "tr">
+
 				</table>
 
 				<div class = "roomLabel">
@@ -200,12 +198,29 @@
 
 	<script type="text/javascript">
 		var audio = [];
+		var rowArray = [];
+		var $well2 = $('#well2');
+		var $roomArea = $('#roomArea');
+		var $messageArea = $('#messageArea');
 
+//dog = play message html button
+//console.log(dog) will have all attribute info of that button
 		function playbut(dog) {
 					console.log(dog.placeholder);
 					var count = dog.placeholder;
 					audio[count].play();
 		}
+
+
+		function join(buttonObject) {
+			console.log(buttonObject.placeholder);
+			var count = buttonObject.placeholder;
+			var theName = rowArray[count];
+			$well2.append("You have joined room: " + '<strong>'+ theName +'</strong>');
+			$roomArea.hide();
+			$messageArea.show();
+		}
+
 		$(function(){
 			var socket = io.connect();
 			var $messageForm = $('#messageForm');
@@ -220,6 +235,7 @@
 			var $roomArea = $('#roomArea');
 			var $room = $('#room');
 			var $well2 = $('#well2');
+			var $cell = $('#cell');
 
 
 			$(document).on('click', '.submit', function(e) {
@@ -235,19 +251,32 @@
 				console.log("record");
 			});
 
+			var index = 0;
 			$(document).on('click', '.create', function(e) {
 						e.preventDefault();
 						console.log("create room");
 					socket.emit('create room', $room.val(), function(data){
 						if(data){
-							//$roomArea.hide();
-							//$messageArea.show();
-							$well2.append("You have joined room: " + '<strong>'+ $room.val() +'</strong>');
-							$table.append('<tr><td>' + $room.val() + '</td><td align = "center"><input type = "submit" ' + "class ='btn btn-primary join' " + 'value="Join Room"/></td></tr>');
+							$table.append('<tr id =' + '"cell"><td>' + $room.val() + '</td><td align = "center"><input placeholder= ' + index + ' onClick = join(this) type = "submit" ' + "class ='btn btn-primary join' " + 'value="Join Room"/></td></tr>');
+							rowArray[index] = $room.val();
+							index++;
 						};
 					});
 				});
-					//ADD IF STATEMENT, APPEND TO TABLE
+
+				// $(document).on('click', '.join', function(e) {
+				// 		e.preventDefault();
+				// 		console.log("joining room");
+				//
+				// 		socket.emit('join room', $room.val(), function(d){
+				// 			if(d){
+				// 				console.log("successfully joined");
+				// 				$well2.append("You have joined room: " + '<strong>'+ $room.val() +'</strong>');
+				// 				$roomArea.hide();
+				// 				$messageArea.show();
+				// 			};
+				// 		});
+				// 	});
 
 			socket.on('new message', function(d){
 				console.log("success");
