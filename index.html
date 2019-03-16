@@ -76,7 +76,7 @@
 
 		    const start = () => mediaRecorder.start();
 
-		    const stop = (socket) =>
+		    const stop = (socket,room) =>
 		      new Promise(resolve => {
 		        mediaRecorder.addEventListener("stop", () => {
 		          const audioBlob = new Blob(audioChunks);
@@ -85,7 +85,7 @@
 		          const play = () => audio.play();
 
 
-		          	socket.emit('send audio', {audio:true , buffer: audioChunks});
+		          	socket.emit('send audio', {audio:true , buffer: audioChunks, roomname:room});
 					console.log("submit audio");
 
 
@@ -100,8 +100,8 @@
 
 	const sleep = time => new Promise(resolve => setTimeout(resolve, time));
 
-	const handleAction = async (socket) => {
-		var sleepNum = 1000 * prompt("Enter how many seconds you'd like to record (Max is 60 and Min is 3");
+	const handleAction = async (socket,room) => {
+		var sleepNum = 1000 * prompt("Enter how many seconds you'd like to record (Max is 60 and Min is 1)");
 
 		console.log(sleep);
 	 	const recorder = await recordAudio();
@@ -109,7 +109,7 @@
 		actionButton.disabled = true;
 		recorder.start();
 		await sleep(sleepNum);
-		const audio = await recorder.stop(socket);
+		const audio = await recorder.stop(socket,room);
 		await sleep(sleepNum);
 		actionButton.disabled = false;
 	}
@@ -156,15 +156,20 @@
 
 				</div>
 			</div>
-		</div>
+		</div> 
+
+		
 
 		<div id = "messageArea" class = "row">
 			<div class = "col-md-4">
 				<div class = "well">
-					<h3> Welcome to A&D's Chat Server Application! </h3>
+					<h3> Welcome to A&D's Chat Server Appliccation! </h3>
 						<div class = "well2" id = "well2">
 
 						</div>
+
+					<h3> Room's Users </h3>
+
 					<ul class = "list-group" id = "users"></ul>
 				</div>
 			</div>
@@ -198,11 +203,16 @@
 
 	<script type="text/javascript">
 		var audio = [];
+		var index = 0;
+		var usersInRoom = 0;
 		var rowArray = [];
 		var $well2 = $('#well2');
 		var $roomArea = $('#roomArea');
 		var $messageArea = $('#messageArea');
-
+		var $backButton = $('#backButton');
+		var currentRoom = "";
+		var currentUser = "";
+		$backButton.hide();
 //dog = play message html button
 //console.log(dog) will have all attribute info of that button
 		function playbut(dog) {
@@ -212,15 +222,7 @@
 		}
 
 
-		function join(buttonObject) {
-			console.log(buttonObject.placeholder);
-			var count = buttonObject.placeholder;
-			var theName = rowArray[count];
-			$well2.append("You have joined room: " + '<strong>'+ theName +'</strong>');
-			$roomArea.hide();
-			$messageArea.show();
-		}
-
+	
 		$(function(){
 			var socket = io.connect();
 			var $messageForm = $('#messageForm');
@@ -240,67 +242,124 @@
 
 			$(document).on('click', '.submit', function(e) {
 			    e.preventDefault();
-				socket.emit('send message', $message.val());
+				socket.emit('send message', $message.val(),currentRoom);
 				$message.val('');
 				console.log("submit button");
 			});
 
 			$(document).on('click', '.record', function(e) {
 			    e.preventDefault();
-				handleAction(socket);
+				handleAction(socket,currentRoom);
 				console.log("record");
 			});
 
-			var index = 0;
 			$(document).on('click', '.create', function(e) {
 						e.preventDefault();
 						console.log("create room");
 					socket.emit('create room', $room.val(), function(data){
-						if(data){
-							$table.append('<tr id =' + '"cell"><td>' + $room.val() + '</td><td align = "center"><input placeholder= ' + index + ' onClick = join(this) type = "submit" ' + "class ='btn btn-primary join' " + 'value="Join Room"/></td></tr>');
-							rowArray[index] = $room.val();
-							index++;
-						};
 					});
+					$room.val(' ');
 				});
 
-				// $(document).on('click', '.join', function(e) {
-				// 		e.preventDefault();
-				// 		console.log("joining room");
-				//
-				// 		socket.emit('join room', $room.val(), function(d){
-				// 			if(d){
-				// 				console.log("successfully joined");
-				// 				$well2.append("You have joined room: " + '<strong>'+ $room.val() +'</strong>');
-				// 				$roomArea.hide();
-				// 				$messageArea.show();
-				// 			};
-				// 		});
-				// 	});
+
+			$(document).on('click', '.join', function(e) {
+						e.preventDefault();
+						var count = e.target.attributes[0].value;
+			var theName = rowArray[count];
+			$well2.append("You have joined room: " + '<strong>'+ theName +'</strong>'); 
+			currentRoom = theName;
+			$roomArea.hide();
+			$messageArea.show();
+			$backButton.show();
+						socket.emit('join room', theName, $username.val(),function(d){			});
+				
+				});
 
 			socket.on('new message', function(d){
 				console.log("success");
-				$chat.append('<div class = "well2"><strong>'+d.user+'</strong>: ' + d.msg+ '</div>');
+				if(d.room == currentRoom){
+					$chat.append('<div class = "well2"><strong>'+d.user+'</strong>: ' + d.msg+'</div>');
+				}
 			});
 
 			$(document).on('click', '.login', function(e) {
 			    e.preventDefault();
+			    currentUser = $username.val()
 				socket.emit('new user', $username.val(), function(data){
 					if(data){
-						$userFormArea.hide();
+						$userFormArea.hide();	
 						//$messageArea.show();
 						$roomArea.show();
 						$message.val('');
+
 						};
 					});
 			});
 
 
+			$(document).on('click', '.back', function(e) {
+						e.preventDefault();
+					
+			$roomArea.show();
+			$messageArea.hide();
+			$backButton.hide();
+					socket.emit('left room', currentRoom, currentUser,function(d){			});
+				
+				});
+
+			socket.on('initial users', function(data,data2){
+				for(var j = 0; j < data.length; j++){
+				console.log(data[j]);
+				}
+				if(currentRoom == data2  && usersInRoom ==0 ) {
+					var html = '';
+					for(i = 0; i< data.length; i++){
+						html += '<li class = "list-group-item">' +  data[i]  + '</li>';
+					usersInRoom++;
+					}
+					$users.append(html);
+				}
+			
+			});
+
+		
+
+			socket.on('get users', function(data,data2){
+				if(currentRoom == data2 && usersInRoom != 0){
+					var html = '';
+					html += '<li class = "list-group-item">' +  data  + '</li>';
+					$users.append(html);
+					usersInRoom++;
+				}
+			
+			});
+
+			socket.on('initial rooms', function(data){
+
+				if(data.length > rowArray.length){
+				for(i = 0; i< data.length; i++){
+					$table.append('<tr id =' + '"cell"><td>' + data[index] + '</td><td align = "center"><input placeholder= ' + index + ' type = "submit" ' + "class ='btn btn-primary join' " + 'value="Join Room"/></td></tr>');
+							rowArray[index] = data[index];
+							index++;
+				}
+			}
+		});
+
+			socket.on('get rooms', function(data){
+				if(data.length > rowArray.length){
+					$table.append('<tr id =' + '"cell"><td>' + data[index] + '</td><td align = "center"><input placeholder= ' + index + ' type = "submit" ' + "class ='btn btn-primary join' " + 'value="Join Room"/></td></tr>');
+							rowArray[index] = data[index];
+							index++;
+			}
+		});
+
+
+				
 
 
 			counter = 0;
 			socket.on('new audio', function(data){
-
+			if(data.roomname == currentRoom){
 
 				const audioBlob2 = new Blob(data.buffer.buffer);
 		    	const audioUrl2 = URL.createObjectURL(audioBlob2);
@@ -321,6 +380,7 @@
 		        $chat.append(s);
 		        $chat.append(r);
 		        counter++;
+		    }
 			});
 		});
 
